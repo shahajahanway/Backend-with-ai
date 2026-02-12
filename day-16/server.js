@@ -4,6 +4,8 @@ const connectToDatabase = require("./src/config/database")
 
 
 connectToDatabase()
+console.log("Day 16' done");
+
 
 
 app.listen(3000, () => {
