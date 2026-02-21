@@ -1,26 +1,23 @@
-const crypto = require("crypto")
-const bcrypt = require('bcrypt')
+const userModel = require('../models/user.model')
+const crypto = require('crypto')
 const jwt = require("jsonwebtoken")
 
 
+async function registerController(req, res) {
+    const { email, username, password, bio, profileImage } = req.body
 
-    async function registerController(req,res){
-    const {email, username, password,bio,profileImage} = req.body
-
-
-    const isUserAlreaduExists = await userModel.findOne({
-        $or:[
-            {username},
-            {email}
+    const isUserAlreadyExists = await userModel.findOne({
+        $or: [
+            { username },
+            { email }
         ]
     })
 
-    if(isUserAlreaduExists){
+    if (isUserAlreadyExists) {
         return res.status(409)
-        .json({
-            message:"User already exists" + ( isUserAlreaduExists.email == 
-            email? "Email already exi":"Username already exists" )
-        })
+            .json({
+                message: "User already exists " + (isUserAlreadyExists.email == email ? "Email already exists" : "Username already exists")
+            })
     }
 
     const hash = crypto.createHash('sha256').update(password).digest('hex')
@@ -30,34 +27,35 @@ const jwt = require("jsonwebtoken")
         email,
         bio,
         profileImage,
-        password:hash
+        password: hash
     })
 
     const token = jwt.sign(
         {
-            id:user._id
+            id: user._id
         },
         process.env.JWT_SECRET,
-        {expiresIn:"id"}
+        { expiresIn: "1d" }
     )
 
-    res.cookie("token",token)
+    res.cookie("token", token)
+
     res.status(201).json({
-        message:"User Registered successfully",
-        user:{
-            email:user.email,
-            username:user.username,
-            bio:user.bio,
-            profileImage:user.profileImage
+        message: "User Registered successfully",
+        user: {
+            email: user.email,
+            username: user.username,
+            bio: user.bio,
+            profileImage: user.profileImage
         }
     })
 
+
 }
 
+async function loginController(req, res) {
+    const { username, email, password } = req.body
 
-
-async function loginController(req,res){
-    const {username,email,password}= req.body
     /**
      * username
      * password
@@ -65,54 +63,57 @@ async function loginController(req,res){
      * email
      * password
      */
+
     /**
-     * {username :a ,email:undefined,password:test } = req.body
-     * ya phir 
-     * {username :undefined ,email:test,password:test } = req.body
+     * { username:undefined,email:test@test.com,password:test } = req.body
      */
 
     const user = await userModel.findOne({
-        $or:[
+        $or: [
             {
-                
                 username: username
             },
             {
-                
                 email: email
-            },
+            }
         ]
     })
-    if(!user){
+
+    if (!user) {
         return res.status(404).json({
-            message:"User not found"
+            message: "User not found"
         })
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password)
-    
-    if(!isPasswordValid){
+    const hash = crypto.createHash('sha256').update(password).digest('hex')
+
+    const isPasswordValid = hash == user.password
+
+    if (!isPasswordValid) {
         return res.status(401).json({
-            message:"Password Invalid"
+            message: "password invalid"
         })
     }
+
     const token = jwt.sign(
-        {id:user._id},
+        { id: user._id },
         process.env.JWT_SECRET,
-        {expiresIn:"1d"}
+        { expiresIn: "1d" }
     )
 
-    res.cookie("token",token)
+    res.cookie("token", token)
 
-    res.status(200).json({
-        message:"User LoggedIn successfully",
-        user:{
-            email:user.email,
-            username:user.username,
-            bio:user.bio,
-            profileImage:user.profileImage
-        }
-    })
+
+    res.status(200)
+        .json({
+            message: "User loggedIn successfully.",
+            user: {
+                username: user.username,
+                email: user.email,
+                bio: user.bio,
+                profileImage: user.profileImage
+            }
+        })
 }
 
 module.exports = {
